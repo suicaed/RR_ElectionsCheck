@@ -3,7 +3,7 @@
 
 ## Setup
 1. Install TamperMonkey or another similar script-runner.
-2. Install the script — [click](https://github.com/suicaed/RR_MessageSender/raw/main/script.user.js).
+2. Install the script — [click](https://github.com/suicaed/RR_ElectionsCheck/raw/main/script.user.js).
 
 ## To enable updates (TamperMonkey)
 1. Open script (click edit in actions).
