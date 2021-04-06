@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RR Elections Check
 // @namespace    http://tampermonkey.net/
-// @version      1.0.0
+// @version      1.0.1
 // @author       suicaed
 // @description
 // @updateURL    https://github.com/suicaed/RR_ElectionsCheck/raw/main/script.user.js
@@ -73,20 +73,31 @@ function addButton(stateId) {
         }
 
         const nonVoterIds = residentIds.filter(id => !votedIds.includes(id));
-        const result = await Promise.all(nonVoterIds.map(async id => {
-            const user = await fetch(`https://rivalregions.com/slide/profile/${id}`)
-            .then(r => r.text())
-            .then(d => {
-                const name = d.match(/Профиль: (?<name>.*)\<\/h1\>/).groups.name;
-                const lvl = Number(d.match(/Уровень: (?<lvl>\d+)/).groups.lvl);
-                return {name: name, lvl: lvl};
+        const users = await Promise.all(nonVoterIds.map(async id => {
+
+            return await fetch(`https://rivalregions.com/slide/profile/${id}?c=${window.c_html}`)
+                .then(r => r.text())
+                .then(d => {
+                const parser = new DOMParser();
+                const tds = [...parser.parseFromString(d, 'text/html').querySelectorAll('td')];
+                const user = {};
+                user.name = d.match(/Профиль: (?<name>.*)\<\/h1\>/).groups.name;
+                user.link = `https://rivalregions.com/#slide/profile/${id}`;
+                user.lvl = Number(d.match(/Уровень: (?<lvl>\d+)/).groups.lvl);
+                user.residence = tds.find(td => td.textContent.search(/Прописан:/) > -1).nextSibling.nextSibling.querySelector('div[title]').getAttribute('title');
+                const party = tds.find(td => td.textContent.search(/Партия \(история\):/) > -1).nextSibling.nextSibling.querySelector('span');
+                user.party = party ? party.textContent : 'Беспартийный';
+                return user;
             });
-            if (user.lvl >= 50) {
-                return `${user.name}---${`https://rivalregions.com/#slide/profile/${id}`}`;
-            } else return false;
         }));
 
-        navigator.clipboard.writeText(result.filter(user => !!user).join('\n'));
+        const filteredUsers = users.filter(user => user && user.name && user.name.search(/Забанен до 19 Января 2038 06:14/) === -1 && user.link && user.lvl && user.lvl > 50 && user.residence && user.party);
+        let s = '';
+        for (const user of filteredUsers) {
+            s += `${user.name}---${user.link}---${user.residence}---${user.party}\n`;
+        }
+        console.log(s);
+        navigator.clipboard.writeText(s);
         button.style = 'pointer-events: none;';
         button.textContent = 'Copied to clipboard';
     });
